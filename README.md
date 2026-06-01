@@ -10,11 +10,9 @@
 2. [CHZZK Best Quality - GreasyFork](https://greasyfork.org/ko/scripts/580717-chzzk-best-quality)를 엽니다.
 3. GreasyFork의 설치 버튼을 누릅니다.
 
-## 링크
+직접 설치가 필요하면 [chzzk-best-quality.user.js](https://update.greasyfork.org/scripts/580717/CHZZK%20Best%20Quality.user.js)를 열면 됩니다.
 
-- 설치 페이지: [GreasyFork](https://greasyfork.org/ko/scripts/580717-chzzk-best-quality)
-- 직접 설치: [chzzk-best-quality.user.js](https://update.greasyfork.org/scripts/580717/CHZZK%20Best%20Quality.user.js)
-- 개발 원본: [GitHub](https://github.com/sjh001111/chzzk-best-quality)
+개발 원본은 [GitHub](https://github.com/sjh001111/chzzk-best-quality)에 있습니다.
 
 ## 하는 일
 
@@ -22,6 +20,12 @@
 - 1080p가 없으면 가능한 최고 화질을 선택합니다.
 - 화질 메뉴 버튼을 직접 누르지 않고 HLS 후보를 정리합니다.
 - 재생 경고 팝업이 뜨면 자동으로 닫습니다.
+
+## 동작 원리
+
+치지직 플레이어가 받아오는 HLS master playlist에는 여러 화질 후보가 들어 있습니다. 이 스크립트는 `.m3u8` 요청을 가로채 1080p가 있으면 1080p 후보만 남기고, 없으면 사용 가능한 최고 화질 후보만 남겨 플레이어에 전달합니다.
+
+그래서 화질 메뉴를 자동으로 클릭하는 방식보다 UI 변경에 덜 민감합니다.
 
 ## 참고
 
