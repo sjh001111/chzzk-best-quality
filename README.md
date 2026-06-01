@@ -1,7 +1,5 @@
 # CHZZK Best Quality
 
-[![설치](https://img.shields.io/badge/설치-GreasyFork-00a67e?style=for-the-badge)](https://update.greasyfork.org/scripts/580717/CHZZK%20Best%20Quality.user.js)
-
 치지직에서 영상이 144p 같은 낮은 화질로 시작되는 문제를 줄이기 위한 유저스크립트입니다.
 
 플레이어의 화질 설정 버튼을 찾아서 누르는 방식이 아닙니다. CHZZK의 HLS master playlist를 가로채서 1080p가 있으면 1080p 스트림만 남기고, 1080p가 없으면 사용 가능한 최고 화질 스트림만 플레이어에 넘깁니다.
@@ -17,19 +15,18 @@
 ## 설치
 
 1. Tampermonkey 또는 Violentmonkey 같은 유저스크립트 매니저를 설치합니다.
-2. 위의 `설치` 버튼을 누릅니다.
-3. 유저스크립트 매니저의 설치 화면이 뜨면 설치합니다.
-
-공식 배포 페이지:
-
-```text
-https://greasyfork.org/ko/scripts/580717-chzzk-best-quality
-```
+2. [GreasyFork 배포 페이지](https://greasyfork.org/ko/scripts/580717-chzzk-best-quality)에서 설치합니다.
 
 직접 설치 링크:
 
 ```text
 https://update.greasyfork.org/scripts/580717/CHZZK%20Best%20Quality.user.js
+```
+
+개발 원본:
+
+```text
+https://github.com/sjh001111/chzzk-best-quality
 ```
 
 ## 동작 원리
