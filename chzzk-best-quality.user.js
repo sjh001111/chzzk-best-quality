@@ -1,11 +1,15 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.01.2
+// @version      2026.06.01.3
 // @description  치지직 HLS 재생을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
 // @match        https://chzzk.naver.com/*
 // @run-at       document-start
 // @grant        none
+// @homepageURL  https://github.com/sjh001111/chzzk-best-quality
+// @supportURL   https://github.com/sjh001111/chzzk-best-quality/issues
+// @downloadURL  https://raw.githubusercontent.com/sjh001111/chzzk-best-quality/main/chzzk-best-quality.user.js
+// @updateURL    https://raw.githubusercontent.com/sjh001111/chzzk-best-quality/main/chzzk-best-quality.user.js
 // ==/UserScript==
 
 (() => {
