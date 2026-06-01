@@ -1,11 +1,11 @@
 {
-  "name": "chzzk-force-best-quality",
+  "name": "chzzk-best-quality",
   "version": "2026.6.1",
-  "description": "A userscript that forces CHZZK HLS playback to 1080p when available, otherwise the highest available quality.",
+  "description": "치지직 HLS 재생을 1080p 또는 사용 가능한 최고 화질로 고정하는 유저스크립트.",
   "license": "MIT",
   "private": false,
   "scripts": {
-    "check": "node --check chzzk-force-best-quality.user.js",
+    "check": "node --check chzzk-best-quality.user.js",
     "test": "node test/userscript.test.js"
   },
   "keywords": [

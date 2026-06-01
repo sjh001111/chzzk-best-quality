@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         CHZZK Force Best Quality
-// @namespace    codex/chzzk-force-best-quality
+// @name         CHZZK Best Quality
+// @namespace    sjh001111/chzzk-best-quality
 // @version      2026.06.01.2
-// @description  Forces CHZZK HLS playback to 1080p when available, otherwise the highest available quality.
+// @description  치지직 HLS 재생을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
 // @match        https://chzzk.naver.com/*
 // @run-at       document-start
 // @grant        none

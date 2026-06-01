@@ -1,4 +1,4 @@
-# CHZZK Force Best Quality
+# CHZZK Best Quality
 
 치지직에서 영상이 144p 같은 낮은 화질로 시작되는 문제를 줄이기 위한 유저스크립트입니다.
 
@@ -15,7 +15,7 @@
 ## 설치
 
 1. Tampermonkey 또는 Violentmonkey 같은 유저스크립트 매니저를 설치합니다.
-2. 이 저장소의 `chzzk-force-best-quality.user.js` 파일을 엽니다.
+2. 이 저장소의 `chzzk-best-quality.user.js` 파일을 엽니다.
 3. Raw 보기에서 유저스크립트 매니저로 설치합니다.
 
 ## 동작 원리

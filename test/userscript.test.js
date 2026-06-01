@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const scriptPath = path.resolve(__dirname, "..", "chzzk-force-best-quality.user.js");
+const scriptPath = path.resolve(__dirname, "..", "chzzk-best-quality.user.js");
 const code = fs.readFileSync(scriptPath, "utf8");
 
 const playlist = [
