@@ -1,0 +1,21 @@
+{
+  "name": "chzzk-force-best-quality",
+  "version": "2026.6.1",
+  "description": "A userscript that forces CHZZK HLS playback to 1080p when available, otherwise the highest available quality.",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "check": "node --check chzzk-force-best-quality.user.js",
+    "test": "node test/userscript.test.js"
+  },
+  "keywords": [
+    "chzzk",
+    "userscript",
+    "tampermonkey",
+    "hls",
+    "quality"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
