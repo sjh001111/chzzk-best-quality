@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.01.3
+// @version      2026.06.03.1
 // @author       sjh001111
 // @license      MIT
 // @description  치지직 HLS 재생을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
@@ -21,9 +21,9 @@
   const PLAYLIST_URL_RE = /\.m3u8(?:[?#]|$)/i;
   const STREAM_INF = "#EXT-X-STREAM-INF";
   const ALERT_DIALOG_SELECTOR = '[role="alertdialog"][aria-modal="true"]';
-  const DIMMED_SELECTOR = '[class*="popup_dimmed"]';
   const WARNING_TITLE = "광고 차단 프로그램";
   const WARNING_CONTEXT = ["재생 환경", "확장 프로그램", "시크릿 모드"];
+  const dismissedWarnings = new WeakSet();
 
   const getRequestUrl = (input) => {
     if (typeof input === "string") return input;
@@ -187,51 +187,18 @@
     return text.includes(WARNING_TITLE) && WARNING_CONTEXT.some((word) => text.includes(word));
   };
 
-  const unlockScroll = () => {
-    for (const node of [document.documentElement, document.body]) {
-      if (node && node.style && node.style.overflow === "hidden") {
-        node.style.overflow = "";
-      }
-    }
-  };
-
-  const hideNode = (node) => {
-    if (node && node.style) node.style.display = "none";
-  };
-
-  const removeNode = (node) => {
-    if (node && typeof node.remove === "function") node.remove();
-  };
-
   const findConfirmButton = (dialog) =>
     [...dialog.querySelectorAll("button")].find((button) =>
       normalizedText(button).includes("확인"),
     );
 
-  const isConnected = (node) =>
-    Boolean(node && typeof node.isConnected === "boolean" && node.isConnected);
-
   const dismissWarning = (dialog) => {
-    if (!isAdblockWarning(dialog)) return;
-
-    const root = dialog.closest(DIMMED_SELECTOR) || dialog;
+    if (dismissedWarnings.has(dialog) || !isAdblockWarning(dialog)) return;
     const confirmButton = findConfirmButton(dialog);
 
-    hideNode(root);
-    unlockScroll();
-
-    if (!confirmButton) {
-      removeNode(root);
-      return;
-    }
-
+    if (!confirmButton) return;
+    dismissedWarnings.add(dialog);
     confirmButton.click();
-    window.setTimeout(() => {
-      if (isConnected(root) || isConnected(dialog)) {
-        removeNode(root);
-        unlockScroll();
-      }
-    }, 80);
   };
 
   const installWarningDismissal = () => {
@@ -248,7 +215,11 @@
     const scheduleScan = () => {
       if (scheduled) return;
       scheduled = true;
-      (window.requestAnimationFrame || window.setTimeout)(scan, 0);
+      if (typeof window.queueMicrotask === "function") {
+        window.queueMicrotask(scan);
+      } else {
+        window.setTimeout(scan, 0);
+      }
     };
 
     const root = document.documentElement || document.body;
