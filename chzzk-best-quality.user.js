@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.03.4
+// @version      2026.06.03.5
 // @author       sjh001111
 // @license      MIT
 // @description  치지직 HLS 재생을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
@@ -160,6 +160,47 @@
     return /\bjson\b/i.test(contentType);
   };
 
+  const patchJsonResponse = (response) => {
+    const nativeJson =
+      response && typeof response.json === "function" ? response.json.bind(response) : null;
+    const nativeText =
+      response && typeof response.text === "function" ? response.text.bind(response) : null;
+    const nativeClone =
+      response && typeof response.clone === "function" ? response.clone.bind(response) : null;
+
+    const descriptors = {};
+    if (nativeJson) {
+      descriptors.json = {
+        configurable: true,
+        value: async () => {
+          const data = await nativeJson();
+          patchDabFlags(data);
+          return data;
+        },
+      };
+    }
+    if (nativeText) {
+      descriptors.text = {
+        configurable: true,
+        value: async () => patchJsonText(await nativeText()),
+      };
+    }
+    if (nativeClone) {
+      descriptors.clone = {
+        configurable: true,
+        value: () => patchJsonResponse(nativeClone()),
+      };
+    }
+
+    try {
+      Object.defineProperties(response, descriptors);
+    } catch {
+      return response;
+    }
+
+    return response;
+  };
+
   const installFetchFilter = () => {
     const nativeFetch = window.fetch;
     if (typeof nativeFetch !== "function") return;
@@ -167,7 +208,9 @@
     window.fetch = async (...args) => {
       const response = await nativeFetch.apply(window, args);
       const url = getRequestUrl(args[0]) || response.url;
-      if (!isPlaylistUrl(url) && !isJsonResponse(response)) return response;
+      if (!isPlaylistUrl(url)) {
+        return isJsonResponse(response) ? patchJsonResponse(response) : response;
+      }
 
       let text;
       try {
