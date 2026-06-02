@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.03.1
+// @version      2026.06.03.2
 // @author       sjh001111
 // @license      MIT
 // @description  치지직 HLS 재생을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
@@ -21,6 +21,7 @@
   const PLAYLIST_URL_RE = /\.m3u8(?:[?#]|$)/i;
   const STREAM_INF = "#EXT-X-STREAM-INF";
   const ALERT_DIALOG_SELECTOR = '[role="alertdialog"][aria-modal="true"]';
+  const DIMMED_SELECTOR = '[class*="popup_dimmed"]';
   const WARNING_TITLE = "광고 차단 프로그램";
   const WARNING_CONTEXT = ["재생 환경", "확장 프로그램", "시크릿 모드"];
   const dismissedWarnings = new WeakSet();
@@ -192,13 +193,64 @@
       normalizedText(button).includes("확인"),
     );
 
+  const isConnected = (node) =>
+    Boolean(node && typeof node.isConnected === "boolean" && node.isConnected);
+
+  const unlockScroll = () => {
+    for (const node of [document.documentElement, document.body]) {
+      if (node && node.style && node.style.overflow === "hidden") {
+        node.style.overflow = "";
+      }
+    }
+  };
+
+  const focusPlayer = () => {
+    const target =
+      document.querySelector("video") ||
+      document.querySelector('[class*="pzp"], [class*="player"]');
+
+    if (!target || typeof target.focus !== "function") return;
+
+    if (
+      typeof target.hasAttribute === "function" &&
+      typeof target.setAttribute === "function" &&
+      !target.hasAttribute("tabindex")
+    ) {
+      target.setAttribute("tabindex", "-1");
+    }
+
+    try {
+      target.focus({ preventScroll: true });
+    } catch {
+      target.focus();
+    }
+  };
+
+  const cleanupWarning = (dialog) => {
+    const root = dialog.closest(DIMMED_SELECTOR) || dialog;
+
+    if (root && typeof root.remove === "function") {
+      root.remove();
+    }
+
+    unlockScroll();
+    focusPlayer();
+  };
+
   const dismissWarning = (dialog) => {
     if (dismissedWarnings.has(dialog) || !isAdblockWarning(dialog)) return;
     const confirmButton = findConfirmButton(dialog);
 
-    if (!confirmButton) return;
     dismissedWarnings.add(dialog);
-    confirmButton.click();
+    if (confirmButton) confirmButton.click();
+
+    window.setTimeout(() => {
+      if (isConnected(dialog)) {
+        cleanupWarning(dialog);
+      } else {
+        focusPlayer();
+      }
+    }, 150);
   };
 
   const installWarningDismissal = () => {
