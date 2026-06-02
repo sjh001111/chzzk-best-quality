@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.03.3
+// @version      2026.06.03.4
 // @author       sjh001111
 // @license      MIT
 // @description  치지직 HLS 재생을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
