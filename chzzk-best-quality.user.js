@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.03.2
+// @version      2026.06.03.3
 // @author       sjh001111
 // @license      MIT
 // @description  치지직 HLS 재생을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
@@ -20,11 +20,7 @@
   const TARGET_HEIGHT = 1080;
   const PLAYLIST_URL_RE = /\.m3u8(?:[?#]|$)/i;
   const STREAM_INF = "#EXT-X-STREAM-INF";
-  const ALERT_DIALOG_SELECTOR = '[role="alertdialog"][aria-modal="true"]';
-  const DIMMED_SELECTOR = '[class*="popup_dimmed"]';
-  const WARNING_TITLE = "광고 차단 프로그램";
-  const WARNING_CONTEXT = ["재생 환경", "확장 프로그램", "시크릿 모드"];
-  const dismissedWarnings = new WeakSet();
+  const DAB_FLAG = "dab";
 
   const getRequestUrl = (input) => {
     if (typeof input === "string") return input;
@@ -110,6 +106,60 @@
     return lines.filter((_, index) => !drop.has(index)).join(eol);
   };
 
+  const patchDabFlags = (value, seen = new WeakSet()) => {
+    const tag = Object.prototype.toString.call(value);
+    if (
+      !value ||
+      typeof value !== "object" ||
+      seen.has(value) ||
+      (tag !== "[object Object]" && tag !== "[object Array]")
+    ) {
+      return false;
+    }
+
+    seen.add(value);
+
+    let changed = false;
+    if (
+      Object.prototype.hasOwnProperty.call(value, DAB_FLAG) &&
+      value[DAB_FLAG] !== false
+    ) {
+      value[DAB_FLAG] = false;
+      changed = true;
+    }
+
+    for (const child of Object.values(value)) {
+      if (patchDabFlags(child, seen)) changed = true;
+    }
+
+    return changed;
+  };
+
+  const patchJsonText = (text) => {
+    if (typeof text !== "string" || !text.includes(`"${DAB_FLAG}"`)) return text;
+
+    try {
+      const data = JSON.parse(text);
+      return patchDabFlags(data) ? JSON.stringify(data) : text;
+    } catch {
+      return text;
+    }
+  };
+
+  const transformTextResponse = (url, text) => {
+    if (isPlaylistUrl(url)) return filterMasterPlaylist(text);
+    return patchJsonText(text);
+  };
+
+  const isJsonResponse = (response) => {
+    const contentType =
+      response && response.headers && typeof response.headers.get === "function"
+        ? response.headers.get("content-type") || ""
+        : "";
+
+    return /\bjson\b/i.test(contentType);
+  };
+
   const installFetchFilter = () => {
     const nativeFetch = window.fetch;
     if (typeof nativeFetch !== "function") return;
@@ -117,7 +167,7 @@
     window.fetch = async (...args) => {
       const response = await nativeFetch.apply(window, args);
       const url = getRequestUrl(args[0]) || response.url;
-      if (!isPlaylistUrl(url)) return response;
+      if (!isPlaylistUrl(url) && !isJsonResponse(response)) return response;
 
       let text;
       try {
@@ -126,7 +176,7 @@
         return response;
       }
 
-      const filtered = filterMasterPlaylist(text);
+      const filtered = transformTextResponse(url, text);
       if (filtered === text) return response;
 
       const headers = new window.Headers(response.headers);
@@ -155,14 +205,20 @@
 
     const filterCached = (xhr, text) => {
       const url = urls.get(xhr) || xhr.responseURL || "";
-      if (!isPlaylistUrl(url) || typeof text !== "string") return text;
+      if (typeof text !== "string") return text;
 
       const cached = cache.get(xhr);
       if (cached && cached.source === text) return cached.filtered;
 
-      const filtered = filterMasterPlaylist(text);
+      const filtered = transformTextResponse(url, text);
       cache.set(xhr, { source: text, filtered });
       return filtered;
+    };
+
+    const filterObject = (xhr, value) => {
+      if (isPlaylistUrl(urls.get(xhr) || xhr.responseURL || "")) return value;
+      patchDabFlags(value);
+      return value;
     };
 
     for (const prop of ["responseText", "response"]) {
@@ -175,117 +231,15 @@
         configurable: true,
         enumerable: descriptor.enumerable,
         get() {
-          return filterCached(this, descriptor.get.call(this));
+          const value = descriptor.get.call(this);
+          return typeof value === "string"
+            ? filterCached(this, value)
+            : filterObject(this, value);
         },
       });
     }
   };
 
-  const normalizedText = (node) => (node.textContent || "").replace(/\s+/g, " ").trim();
-
-  const isAdblockWarning = (dialog) => {
-    const text = normalizedText(dialog);
-    return text.includes(WARNING_TITLE) && WARNING_CONTEXT.some((word) => text.includes(word));
-  };
-
-  const findConfirmButton = (dialog) =>
-    [...dialog.querySelectorAll("button")].find((button) =>
-      normalizedText(button).includes("확인"),
-    );
-
-  const isConnected = (node) =>
-    Boolean(node && typeof node.isConnected === "boolean" && node.isConnected);
-
-  const unlockScroll = () => {
-    for (const node of [document.documentElement, document.body]) {
-      if (node && node.style && node.style.overflow === "hidden") {
-        node.style.overflow = "";
-      }
-    }
-  };
-
-  const focusPlayer = () => {
-    const target =
-      document.querySelector("video") ||
-      document.querySelector('[class*="pzp"], [class*="player"]');
-
-    if (!target || typeof target.focus !== "function") return;
-
-    if (
-      typeof target.hasAttribute === "function" &&
-      typeof target.setAttribute === "function" &&
-      !target.hasAttribute("tabindex")
-    ) {
-      target.setAttribute("tabindex", "-1");
-    }
-
-    try {
-      target.focus({ preventScroll: true });
-    } catch {
-      target.focus();
-    }
-  };
-
-  const cleanupWarning = (dialog) => {
-    const root = dialog.closest(DIMMED_SELECTOR) || dialog;
-
-    if (root && typeof root.remove === "function") {
-      root.remove();
-    }
-
-    unlockScroll();
-    focusPlayer();
-  };
-
-  const dismissWarning = (dialog) => {
-    if (dismissedWarnings.has(dialog) || !isAdblockWarning(dialog)) return;
-    const confirmButton = findConfirmButton(dialog);
-
-    dismissedWarnings.add(dialog);
-    if (confirmButton) confirmButton.click();
-
-    window.setTimeout(() => {
-      if (isConnected(dialog)) {
-        cleanupWarning(dialog);
-      } else {
-        focusPlayer();
-      }
-    }, 150);
-  };
-
-  const installWarningDismissal = () => {
-    if (!document || !window.MutationObserver) return;
-
-    let scheduled = false;
-    const scan = () => {
-      scheduled = false;
-      for (const dialog of document.querySelectorAll(ALERT_DIALOG_SELECTOR)) {
-        dismissWarning(dialog);
-      }
-    };
-
-    const scheduleScan = () => {
-      if (scheduled) return;
-      scheduled = true;
-      if (typeof window.queueMicrotask === "function") {
-        window.queueMicrotask(scan);
-      } else {
-        window.setTimeout(scan, 0);
-      }
-    };
-
-    const root = document.documentElement || document.body;
-    if (!root) return;
-
-    new window.MutationObserver(scheduleScan).observe(root, {
-      childList: true,
-      subtree: true,
-    });
-
-    scheduleScan();
-  };
-
   installFetchFilter();
   installXhrFilter();
-  installWarningDismissal();
 })();
