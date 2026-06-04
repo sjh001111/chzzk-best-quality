@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.04.2
+// @version      2026.06.04.3
 // @author       sjh001111
 // @license      MIT
 // @description  치지직 재생 화질을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
@@ -110,26 +110,26 @@
     };
   };
 
-  const parseBitrate = (value) => {
-    if (!value || typeof value !== "object") return toNumber(value);
+  const parseVideoTrack = (item) => {
+    const bitrate = item && item.bitrate;
+    const bitrateValue =
+      bitrate && typeof bitrate === "object"
+        ? Number(bitrate.video || 0) + Number(bitrate.audio || 0)
+        : bitrate;
 
-    return toNumber(
-      Number(value.video || 0) + Number(value.audio || 0),
-      value.total,
-    );
+    return {
+      item,
+      height: toNumber(item && item.height, item && item.videoHeight),
+      width: toNumber(item && item.width, item && item.videoWidth),
+      fps: toNumber(item && item.fps, item && item.videoFrameRate),
+      bandwidth: toNumber(
+        item && item.bandwidth,
+        item && item.videoBitrate,
+        bitrateValue,
+        bitrate && bitrate.total,
+      ),
+    };
   };
-
-  const parseVideoTrack = (item) => ({
-    item,
-    height: toNumber(item && item.height, item && item.videoHeight),
-    width: toNumber(item && item.width, item && item.videoWidth),
-    fps: toNumber(item && item.fps, item && item.videoFrameRate),
-    bandwidth: toNumber(
-      item && item.bandwidth,
-      item && item.videoBitrate,
-      parseBitrate(item && item.bitrate),
-    ),
-  });
 
   const isVideoTrack = (variant) => {
     const item = variant.item;
@@ -138,9 +138,7 @@
       variant.width > 0 &&
       !!item &&
       typeof item === "object" &&
-      (typeof item.source === "string" ||
-        typeof item.src === "string" ||
-        !!item.encodingOption ||
+      (!!item.encodingOption ||
         !!item.encodingOptionID ||
         !!item.videoQuality ||
         !!item.bitrate ||
