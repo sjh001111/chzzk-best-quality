@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.04.3
+// @version      2026.06.04.4
 // @author       sjh001111
 // @license      MIT
 // @description  치지직 재생 화질을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
@@ -292,15 +292,6 @@
     return patchJsonText(text);
   };
 
-  const isJsonResponse = (response) => {
-    const contentType =
-      response && response.headers && typeof response.headers.get === "function"
-        ? response.headers.get("content-type") || ""
-        : "";
-
-    return /\bjson\b/i.test(contentType);
-  };
-
   const patchJsonResponse = (response) => {
     const nativeJson =
       response && typeof response.json === "function" ? response.json.bind(response) : null;
@@ -350,7 +341,7 @@
       const response = await nativeFetch.apply(window, args);
       const url = getRequestUrl(args[0]) || response.url;
       if (!isPlaylistUrl(url)) {
-        return isJsonResponse(response) ? patchJsonResponse(response) : response;
+        return patchJsonResponse(response);
       }
 
       let text;
