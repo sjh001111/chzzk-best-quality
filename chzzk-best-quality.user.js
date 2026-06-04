@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.04.1
+// @version      2026.06.04.2
 // @author       sjh001111
 // @license      MIT
 // @description  치지직 재생 화질을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
@@ -110,6 +110,44 @@
     };
   };
 
+  const parseBitrate = (value) => {
+    if (!value || typeof value !== "object") return toNumber(value);
+
+    return toNumber(
+      Number(value.video || 0) + Number(value.audio || 0),
+      value.total,
+    );
+  };
+
+  const parseVideoTrack = (item) => ({
+    item,
+    height: toNumber(item && item.height, item && item.videoHeight),
+    width: toNumber(item && item.width, item && item.videoWidth),
+    fps: toNumber(item && item.fps, item && item.videoFrameRate),
+    bandwidth: toNumber(
+      item && item.bandwidth,
+      item && item.videoBitrate,
+      parseBitrate(item && item.bitrate),
+    ),
+  });
+
+  const isVideoTrack = (variant) => {
+    const item = variant.item;
+    return (
+      variant.height > 0 &&
+      variant.width > 0 &&
+      !!item &&
+      typeof item === "object" &&
+      (typeof item.source === "string" ||
+        typeof item.src === "string" ||
+        !!item.encodingOption ||
+        !!item.encodingOptionID ||
+        !!item.videoQuality ||
+        !!item.bitrate ||
+        !!item.videoBitrate)
+    );
+  };
+
   const patchRepresentationGroup = (value) => {
     const representations = value && value.Representation;
     if (!Array.isArray(representations) || representations.length < 2) return false;
@@ -136,6 +174,26 @@
       if (Object.prototype.hasOwnProperty.call(value, "maxWidth")) {
         value.maxWidth = chosen.width;
       }
+    }
+
+    return true;
+  };
+
+  const patchVideoTrackList = (value) => {
+    const list = value && value.list;
+    if (!Array.isArray(list) || list.length < 2) return false;
+
+    const variants = list.map(parseVideoTrack);
+    if (!variants.every(isVideoTrack)) return false;
+
+    const chosen = chooseVariant(variants);
+    value.list = [chosen.item];
+
+    if (Object.prototype.hasOwnProperty.call(chosen.item, "selected")) {
+      chosen.item.selected = true;
+    }
+    if (Object.prototype.hasOwnProperty.call(chosen.item, "isDefault")) {
+      chosen.item.isDefault = true;
     }
 
     return true;
@@ -204,6 +262,7 @@
     }
 
     if (patchRepresentationGroup(value)) changed = true;
+    if (patchVideoTrackList(value)) changed = true;
 
     for (const child of Object.values(value)) {
       if (patchPayload(child, seen)) changed = true;
@@ -216,7 +275,8 @@
     if (
       typeof text !== "string" ||
       (!text.includes(`"${DAB_FLAG}"`) &&
-        !(text.includes('"MPD"') && text.includes('"Representation"')))
+        !(text.includes('"MPD"') && text.includes('"Representation"')) &&
+        !(text.includes('"videos"') && text.includes('"list"')))
     ) {
       return text;
     }
