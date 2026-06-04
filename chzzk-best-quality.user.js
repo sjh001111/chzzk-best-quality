@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.03.5
+// @version      2026.06.04.1
 // @author       sjh001111
 // @license      MIT
-// @description  치지직 HLS 재생을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
+// @description  치지직 재생 화질을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
 // @match        https://chzzk.naver.com/*
 // @run-at       document-start
 // @grant        none
@@ -67,6 +67,80 @@
     return target[0] || [...variants].sort(compareQuality)[0];
   };
 
+  const toNumber = (...values) => {
+    for (const value of values) {
+      const number = Number(value);
+      if (Number.isFinite(number) && number > 0) return number;
+    }
+
+    return 0;
+  };
+
+  const findLabelValue = (labels, kind) => {
+    if (!Array.isArray(labels)) return "";
+
+    const label = labels.find((item) => item && item["@kind"] === kind);
+    return label ? label["#text"] || "" : "";
+  };
+
+  const parseQualityIdHeight = (qualityId) => {
+    const match = String(qualityId || "").match(/(?:^|_)(\d{3,4})P(?:_|$)/i);
+    return match ? match[1] : "";
+  };
+
+  const parseRepresentation = (item) => {
+    const labels = item && item["nvod:Label"];
+    const qualityId = findLabelValue(labels, "qualityId") || item["@id"];
+
+    return {
+      item,
+      height: toNumber(
+        item && item["@height"],
+        item && item.height,
+        findLabelValue(labels, "resolution"),
+        parseQualityIdHeight(qualityId),
+      ),
+      width: toNumber(item && item["@width"], item && item.width),
+      fps: toNumber(
+        item && item["@frameRate"],
+        item && item.frameRate,
+        findLabelValue(labels, "fps"),
+      ),
+      bandwidth: toNumber(item && item["@bandwidth"], item && item.bandwidth),
+    };
+  };
+
+  const patchRepresentationGroup = (value) => {
+    const representations = value && value.Representation;
+    if (!Array.isArray(representations) || representations.length < 2) return false;
+
+    const variants = representations.map(parseRepresentation).filter((item) => item.height > 0);
+    if (variants.length < 2) return false;
+
+    const chosen = chooseVariant(variants);
+    value.Representation = [chosen.item];
+
+    if (chosen.height) {
+      if (Object.prototype.hasOwnProperty.call(value, "@maxHeight")) {
+        value["@maxHeight"] = String(chosen.height);
+      }
+      if (Object.prototype.hasOwnProperty.call(value, "maxHeight")) {
+        value.maxHeight = chosen.height;
+      }
+    }
+
+    if (chosen.width) {
+      if (Object.prototype.hasOwnProperty.call(value, "@maxWidth")) {
+        value["@maxWidth"] = String(chosen.width);
+      }
+      if (Object.prototype.hasOwnProperty.call(value, "maxWidth")) {
+        value.maxWidth = chosen.width;
+      }
+    }
+
+    return true;
+  };
+
   const filterMasterPlaylist = (text) => {
     if (
       typeof text !== "string" ||
@@ -106,7 +180,7 @@
     return lines.filter((_, index) => !drop.has(index)).join(eol);
   };
 
-  const patchDabFlags = (value, seen = new WeakSet()) => {
+  const patchPayload = (value, seen = new WeakSet()) => {
     const tag = Object.prototype.toString.call(value);
     if (
       !value ||
@@ -120,6 +194,7 @@
     seen.add(value);
 
     let changed = false;
+
     if (
       Object.prototype.hasOwnProperty.call(value, DAB_FLAG) &&
       value[DAB_FLAG] !== false
@@ -128,19 +203,27 @@
       changed = true;
     }
 
+    if (patchRepresentationGroup(value)) changed = true;
+
     for (const child of Object.values(value)) {
-      if (patchDabFlags(child, seen)) changed = true;
+      if (patchPayload(child, seen)) changed = true;
     }
 
     return changed;
   };
 
   const patchJsonText = (text) => {
-    if (typeof text !== "string" || !text.includes(`"${DAB_FLAG}"`)) return text;
+    if (
+      typeof text !== "string" ||
+      (!text.includes(`"${DAB_FLAG}"`) &&
+        !(text.includes('"MPD"') && text.includes('"Representation"')))
+    ) {
+      return text;
+    }
 
     try {
       const data = JSON.parse(text);
-      return patchDabFlags(data) ? JSON.stringify(data) : text;
+      return patchPayload(data) ? JSON.stringify(data) : text;
     } catch {
       return text;
     }
@@ -174,7 +257,7 @@
         configurable: true,
         value: async () => {
           const data = await nativeJson();
-          patchDabFlags(data);
+          patchPayload(data);
           return data;
         },
       };
@@ -260,7 +343,7 @@
 
     const filterObject = (xhr, value) => {
       if (isPlaylistUrl(urls.get(xhr) || xhr.responseURL || "")) return value;
-      patchDabFlags(value);
+      patchPayload(value);
       return value;
     };
 
