@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CHZZK Best Quality
 // @namespace    sjh001111/chzzk-best-quality
-// @version      2026.06.04.4
+// @version      2026.06.23.0
 // @author       sjh001111
 // @license      MIT
 // @description  치지직 재생 화질을 1080p 또는 사용 가능한 최고 화질로 고정합니다.
@@ -197,6 +197,60 @@
     return true;
   };
 
+  const patchLivePlayback = (value) => {
+    if (!value || typeof value !== "object") return false;
+    if (!Array.isArray(value.media)) return false;
+
+    let changed = false;
+
+    if (value.meta && value.meta.p2p !== false) {
+      value.meta.p2p = false;
+      changed = true;
+    }
+
+    for (const media of value.media) {
+      const tracks = media && media.encodingTrack;
+      if (!Array.isArray(tracks)) continue;
+
+      for (const track of tracks) {
+        if (!track || typeof track !== "object") continue;
+
+        for (const key of ["p2pPath", "p2pPathUrlEncoding"]) {
+          if (!Object.prototype.hasOwnProperty.call(track, key)) continue;
+          delete track[key];
+          changed = true;
+        }
+      }
+    }
+
+    return changed;
+  };
+
+  const patchLiveDetail = (value) => {
+    if (!value || typeof value !== "object") return false;
+
+    let changed = false;
+
+    if (Array.isArray(value.p2pQuality) && value.p2pQuality.length) {
+      value.p2pQuality = [];
+      changed = true;
+    }
+
+    if (typeof value.livePlaybackJson !== "string") return changed;
+
+    try {
+      const playback = JSON.parse(value.livePlaybackJson);
+      if (patchLivePlayback(playback)) {
+        value.livePlaybackJson = JSON.stringify(playback);
+        changed = true;
+      }
+    } catch {
+      return changed;
+    }
+
+    return changed;
+  };
+
   const filterMasterPlaylist = (text) => {
     if (
       typeof text !== "string" ||
@@ -261,6 +315,8 @@
 
     if (patchRepresentationGroup(value)) changed = true;
     if (patchVideoTrackList(value)) changed = true;
+    if (patchLivePlayback(value)) changed = true;
+    if (patchLiveDetail(value)) changed = true;
 
     for (const child of Object.values(value)) {
       if (patchPayload(child, seen)) changed = true;
@@ -274,7 +330,9 @@
       typeof text !== "string" ||
       (!text.includes(`"${DAB_FLAG}"`) &&
         !(text.includes('"MPD"') && text.includes('"Representation"')) &&
-        !(text.includes('"videos"') && text.includes('"list"')))
+        !(text.includes('"videos"') && text.includes('"list"')) &&
+        !text.includes('"livePlaybackJson"') &&
+        !text.includes('"p2pQuality"'))
     ) {
       return text;
     }
